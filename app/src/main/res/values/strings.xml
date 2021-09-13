@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Movie</string>
+    <string name="text_error">No internet connection</string>
+    <string name="text_title_movie">After We Fell</string>
+    <string name="text_date">2021-08-12</string>
+    <string name="text_title_date">Release Date :</string>
+    <string name="text_title_popularity">Rating :</string>
+    <string name="text_popularity">85.179</string>
+    <string name="text_tag">When honor was everything.</string>
+    <string name="text_overview_movie">Ryder and the pups are called to Adventure City to stop Mayor Humdinger from turning the bustling metropolis into a state of chaos.</string>
+</resources>
