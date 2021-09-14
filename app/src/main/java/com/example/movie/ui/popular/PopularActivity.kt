@@ -2,72 +2,94 @@ package com.example.movie.ui.popular
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.view.View
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.*
+import androidx.paging.LoadState
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.movie.R
-import com.example.movie.data.api.ApiClient
-import com.example.movie.data.api.ApiInterface
-import com.example.movie.data.repository.NetworkState
+import com.example.movie.ui.popular.adapter.PopularAdapter
+import com.example.movie.ui.popular.adapter.StateAdapter
+import com.example.movie.visibleWhen
 import kotlinx.android.synthetic.main.activity_popular.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+
+/**
+ * reference :
+ * https://medium.com/@ekoo/mencoba-paging-3-0-f73221ae1d97
+ *
+ * for centered inside recyclerView gridLayout :
+ * https://stackoverflow.com/questions/65291291/android-loadstateadapter-not-centered-inside-recyclerview-gridlayout
+ *
+ * */
 
 class PopularActivity : AppCompatActivity() {
 
-    private lateinit var viewModel: PopularViewModel
-    lateinit var mainPageListRepository: PopularPageListRepository
+    private var fetchMovieJob: Job? = null
+    private val popularAdapter: PopularAdapter by lazy {
+        PopularAdapter()
+    }
+
+    private val viewModel by lazy {
+        ViewModelProvider(this)[PopularViewModel::class.java]
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_popular)
 
-        val apiInterface: ApiInterface = ApiClient.getClient()
-        mainPageListRepository =
-            PopularPageListRepository(apiInterface)
-        viewModel = getViewModel()
+        initAdapter()
+        fetchMovie()
 
-        val upcomingAdapter = PopularPagedAdapter(this)
+        btn_retry.setOnClickListener {
+            popularAdapter.retry()
+        }
+    }
+
+    private fun initAdapter() {
+
+        val headerAdapter = StateAdapter { popularAdapter.retry() }
+        val footerAdapter = StateAdapter { popularAdapter.retry() }
+
+        val concatAdapter = popularAdapter.withLoadStateHeaderAndFooter(
+            header = headerAdapter,
+            footer = footerAdapter
+        )
+
+        rv_popular.adapter = concatAdapter
         val gridLayoutManager = GridLayoutManager(this, 2)
+        rv_popular.layoutManager = gridLayoutManager
+
         gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int {
-                val viewType = upcomingAdapter.getItemViewType(position)
-                return if (viewType == upcomingAdapter.UPCOMING_VIEW_TYPE) 1  //UPCOMING_VIEW_TYPE will occupy 1 out of 2 span
-                else 2                                                  //NETWORK_VIEW_TYPE will occupy all 2 span
+                return if (position == 0 && headerAdapter.itemCount > 0) {
+                    // if it is the first position and we have a header,
+                    2
+                } else if (position == concatAdapter.itemCount - 1 && footerAdapter.itemCount > 0) {
+                    // if it is the last position and we have a footer
+                    2
+                } else {
+                    1
+                }
             }
         }
 
-        //set recyclerView
-        rv_popular.layoutManager = gridLayoutManager
-        rv_popular.setHasFixedSize(true)
-        rv_popular.adapter = upcomingAdapter
-
-        viewModel.upcomingPagedList.observe(this, Observer {
-            upcomingAdapter.submitList(it)
-        })
-
-        viewModel.networkState.observe(this, Observer {
-
-            progressBar.visibility =
-                if (viewModel.listIsEmpty() && it == NetworkState.LOADED) View.VISIBLE else View.GONE
-            tv_error.visibility =
-                if (viewModel.listIsEmpty() && it == NetworkState.ERROR) View.VISIBLE else View.GONE
-
-            if (!viewModel.listIsEmpty()) {
-                upcomingAdapter.setNetworkState(it)
+        popularAdapter.addLoadStateListener { loadState ->
+            loadState.refresh.let {
+                tv_error.visibleWhen(it is LoadState.Error)
+                btn_retry.visibleWhen(it is LoadState.Error)
+                progressBar.visibleWhen(it is LoadState.Loading)
+                rv_popular.visibleWhen(it is LoadState.NotLoading)
             }
-        })
+        }
     }
 
-    private fun getViewModel(): PopularViewModel {
-        return ViewModelProviders.of(this, object : ViewModelProvider.Factory {
-            override fun <T : ViewModel?> create(modelClass: Class<T>): T {
-                @Suppress("UNCHECKED_CAST")
-                return PopularViewModel(
-                    mainPageListRepository
-                ) as T
+    private fun fetchMovie() {
+        fetchMovieJob?.cancel()
+        fetchMovieJob = lifecycleScope.launch {
+            viewModel.movieList().collectLatest {
+                popularAdapter.submitData(it)
             }
-        })[PopularViewModel::class.java]
+        }
     }
 }
