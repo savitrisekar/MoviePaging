@@ -5,11 +5,10 @@ import android.os.Bundle
 import androidx.lifecycle.*
 import androidx.paging.LoadState
 import androidx.recyclerview.widget.GridLayoutManager
-import com.example.movie.R
+import com.example.movie.databinding.ActivityPopularBinding
 import com.example.movie.ui.popular.adapter.PopularAdapter
 import com.example.movie.ui.popular.adapter.StateAdapter
-import com.example.movie.visibleWhen
-import kotlinx.android.synthetic.main.activity_popular.*
+import com.example.movie.utils.visibleWhen
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -25,10 +24,9 @@ import kotlinx.coroutines.launch
 
 class PopularActivity : AppCompatActivity() {
 
+    private lateinit var popularAdapter: PopularAdapter
+    private lateinit var binding: ActivityPopularBinding
     private var fetchMovieJob: Job? = null
-    private val popularAdapter: PopularAdapter by lazy {
-        PopularAdapter()
-    }
 
     private val viewModel by lazy {
         ViewModelProvider(this)[PopularViewModel::class.java]
@@ -36,17 +34,18 @@ class PopularActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_popular)
+
+        binding = ActivityPopularBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         initAdapter()
         fetchMovie()
-
-        btn_retry.setOnClickListener {
-            popularAdapter.retry()
-        }
     }
 
     private fun initAdapter() {
+
+        popularAdapter = PopularAdapter(viewModel = viewModel)
+        binding.rvPopular.adapter = popularAdapter
 
         val headerAdapter = StateAdapter { popularAdapter.retry() }
         val footerAdapter = StateAdapter { popularAdapter.retry() }
@@ -56,9 +55,9 @@ class PopularActivity : AppCompatActivity() {
             footer = footerAdapter
         )
 
-        rv_popular.adapter = concatAdapter
+        binding.rvPopular.adapter = concatAdapter
         val gridLayoutManager = GridLayoutManager(this, 2)
-        rv_popular.layoutManager = gridLayoutManager
+        binding.rvPopular.layoutManager = gridLayoutManager
 
         gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int {
@@ -76,11 +75,15 @@ class PopularActivity : AppCompatActivity() {
 
         popularAdapter.addLoadStateListener { loadState ->
             loadState.refresh.let {
-                tv_error.visibleWhen(it is LoadState.Error)
-                btn_retry.visibleWhen(it is LoadState.Error)
-                progressBar.visibleWhen(it is LoadState.Loading)
-                rv_popular.visibleWhen(it is LoadState.NotLoading)
+                binding.tvError.visibleWhen(it is LoadState.Error)
+                binding.btnRetry.visibleWhen(it is LoadState.Error)
+                binding.progressBar.visibleWhen(it is LoadState.Loading)
+                binding.rvPopular.visibleWhen(it is LoadState.NotLoading)
             }
+        }
+
+        binding.btnRetry.setOnClickListener {
+            popularAdapter.refresh()
         }
     }
 

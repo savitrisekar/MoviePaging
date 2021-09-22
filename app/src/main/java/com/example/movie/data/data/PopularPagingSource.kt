@@ -5,7 +5,6 @@ import androidx.paging.PagingState
 import com.example.movie.data.api.ApiClient
 import com.example.movie.data.api.ApiService
 import com.example.movie.data.model.PopularModel
-import com.example.movie.data.model.PopularResponse
 
 /**
  * Data sumber

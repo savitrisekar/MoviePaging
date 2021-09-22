@@ -1,7 +1,6 @@
 package com.example.movie.data.api
 
 import com.example.movie.data.model.PopularResponse
-import io.reactivex.Single
 import retrofit2.http.GET
 import retrofit2.http.Query
 

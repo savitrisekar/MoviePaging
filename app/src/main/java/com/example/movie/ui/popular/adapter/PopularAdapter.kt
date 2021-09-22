@@ -1,60 +1,48 @@
 package com.example.movie.ui.popular.adapter
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
-import com.example.movie.R
 import com.example.movie.data.model.PopularModel
-import kotlinx.android.synthetic.main.item_popular.view.*
+import com.example.movie.databinding.ItemPopularBinding
+import com.example.movie.ui.popular.PopularViewModel
 
-class PopularAdapter :
+class PopularAdapter(private val viewModel: PopularViewModel) :
     PagingDataAdapter<PopularModel, PopularAdapter.ViewHolder>(diffUtilCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        return ViewHolder(
-            LayoutInflater.from(parent.context).inflate(R.layout.item_popular, parent, false)
-        )
+        return ViewHolder.from(parent)
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        getItem(position)?.let {
-            holder.bind(it)
+        val item = getItem(position)
+        if (item != null) {
+            holder.bind(this.viewModel, item)
         }
     }
 
-    inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+    class ViewHolder(private val binding: ItemPopularBinding) :
+        RecyclerView.ViewHolder(binding.root) {
 
-        private val title: TextView = view.tv_title_movie
-        private val date: TextView = view.tv_date
-        private var popularModel: PopularModel? = null
+        fun bind(viewModel: PopularViewModel, model: PopularModel) {
 
-        fun bind(popularModel: PopularModel) {
+            binding.movie = model
+            binding.viewModel = viewModel
+            binding.executePendingBindings()
+        }
 
-            title.text = popularModel.title
-            date.text = popularModel.releaseDate
-
-            val imgMovie = POSTER_BASE_URL + popularModel?.posterPath
-            Glide.with(itemView.context)
-                .load(imgMovie)
-                .into(itemView.iv_poster_movie)
-
-            this.popularModel = popularModel
-
-//            itemView.setOnClickListener {
-//                val intent = Intent(context, PopularDetailsActivity::class.java)
-//                intent.putExtra("id", upcomingMovie?.id)
-//                context.startActivity(intent)
-//            }
+        companion object {
+            fun from(parent: ViewGroup): ViewHolder {
+                val layoutInflater = LayoutInflater.from(parent.context)
+                val binding = ItemPopularBinding.inflate(layoutInflater, parent, false)
+                return ViewHolder(binding)
+            }
         }
     }
 
     companion object {
-        private const val POSTER_BASE_URL = "https://image.tmdb.org/t/p/w342/"
 
         private val diffUtilCallback = object :
             DiffUtil.ItemCallback<PopularModel>() {
